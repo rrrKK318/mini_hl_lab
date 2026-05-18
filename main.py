@@ -1,0 +1,1 @@
+cat /home/workdir/artifacts/mini_hl_lab/main.py
