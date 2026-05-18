@@ -115,38 +115,48 @@ def generate_report():
 
 ## 1. 實驗目的
 
-本專案建立一個迷你虛擬環境，展示「規則堆疊」(rule stacking) 與「啟發式學習系統」(Heuristic Learning System) 的功能差異。
+本專案建立一個迷你虛擬環境，展示「規則堆疊」(rule stacking) 與「啟發式學習系統」(Heuristic Learning System) 的功能差異。純規則堆疊只是累積 if/else，無法處理環境複雜度上升時的耦合衝突；而啟發式系統透過結構化狀態讀取、模組化政策提案、記憶更新、回放記錄、回歸測試與壓縮，真正實現「學習」而非僅「補丁」。
 
 ## 2. 虛擬環境
 
-使用文字-based Grid World，包含 S, G, #, ., K, D, T, E, B, M 等符號。
+- **Grid World**：文字-based，deterministic。
+- **符號**：S=起點, G=目標, #=牆, .=空地, K=鑰匙, D=鎖門, T=陷阱(即死), E=敵人(移動hazard), B=獎勵, M=泥地(可通行但扣分)。
+- **動作**：up/down/left/right/wait/pickup/open
+- **五個關卡**：
+  1. level_1_simple_path：簡單路徑
+  2. level_2_trap：需避開陷阱
+  3. level_3_key_door：需先拿鑰匙再開門
+  4. level_4_enemy_timing：需等待或避開時機衝突
+  5. level_5_conflict：綜合複雜情境，暴露規則堆疊的衝突
 
 ## 3. rule_stack_agent 結果
 
-線性規則堆疊在簡單關卡可行，但隨著複雜度增加（尤其是 level_3, level_5），衝突與失敗明顯上升。
+rule_stack_agent 使用線性優先順序規則堆疊。
+- level_1 ~ level_2：表現尚可。
+- level_3 ~ level_5：衝突明顯增加，容易 timeout。
 
 ## 4. hs_agent 結果
 
-透過 state_reader + 模組化政策 + memory + arbitration，在複雜關卡表現更穩定。
+使用 state_reader + 模組化政策 + memory + arbitration，在複雜關卡（尤其是 level_5）表現更穩定。
 
 ## 5. 規則堆疊為何不是 HL
 
-純規則堆疊只會累積補丁，缺少 feedback、memory、replay、compression 與 regression tests 的閉環。
+純規則堆疊缺少 feedback、memory、replay、compression 與 regression test 的閉環。
 
 ## 6. 吸收與壓縮
 
-compressor 會將重複約束合併為更通用的規則，並保留 golden_traces。
+compressor 可將重複約束合併。
 
 ## 7. 限制
 
-這是 minimal demo，不是完整的神經網路或自主學習系統。
+這是 minimal demo，不是完整神經網路系統。
 """
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write(content)
     print(f"Report generated: {report_path}")
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="mini_hl_lab")
     parser.add_argument("--agent", choices=["rule_stack", "hs"])
     parser.add_argument("--level", type=int, choices=[1,2,3,4,5])
     parser.add_argument("--compare", action="store_true")
@@ -155,7 +165,13 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
-    level_map = {1: "level_1_simple_path", 2: "level_2_trap", 3: "level_3_key_door", 4: "level_4_enemy_timing", 5: "level_5_conflict"}
+    level_map = {
+        1: "level_1_simple_path",
+        2: "level_2_trap",
+        3: "level_3_key_door",
+        4: "level_4_enemy_timing",
+        5: "level_5_conflict"
+    }
 
     if args.compare:
         run_compare()
@@ -169,7 +185,7 @@ def main():
         result, replay_file, mem_updates = run_episode(agent, lvl_name, debug=args.debug)
         print(f"[{args.agent}] {lvl_name} | Success: {result['success']} | Score: {result['score']} | Steps: {result['steps']} | Fail: {result['failure_reason']}")
     else:
-        print("Try: python main.py --compare")
+        print("Usage: python main.py --compare")
 
 if __name__ == "__main__":
     main()
